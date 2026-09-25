@@ -44,7 +44,7 @@ def load_model(model_name='jina-clip-v2', config_path=CONFIG_PATH):
             model_path,
             trust_remote_code=True,
             torch_dtype=torch.float16 if device == "cuda" else torch.float32,
-            low_cpu_mem_usage=False,
+            low_cpu_mem_usage=False if device == "cuda" else True,
         )
         model = model.to(device)
         model.eval()

@@ -18,6 +18,14 @@ Run:
 
 import os
 
+os.environ["MALLOC_ARENA_MAX"] = "2"
+os.environ["MALLOC_TRIM_THRESHOLD_"] = "65536"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+
+import ctypes
+import gc
+
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,6 +34,9 @@ from fastapi.staticfiles import StaticFiles
 
 import state  # noqa: F401  import to trigger load dataset once at startup
 import model_state  # noqa: F401  import to trigger load model + FAISS index once at startup
+
+import torch
+torch.set_num_threads(1)
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -39,6 +50,31 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Middleware to release memory after each request, especially important for GPU memory management
+import psutil
+_process = psutil.Process(os.getpid())
+
+STATIC_PREFIXES = ("/static/", "/assets/")
+
+@app.middleware("http")
+async def release_memory_middleware(request, call_next):
+    response = await call_next(request)
+
+    path = request.url.path
+    if path.startswith(STATIC_PREFIXES):
+        # Static files (images, JS, CSS) are lightweight and do not require garbage collection or malloc_trim, 
+        # avoiding slowdowns in batch frame loading
+        return response
+
+    gc.collect()
+    try:
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except Exception:
+        pass
+    rss = _process.memory_info().rss / 1e9
+    print(f"[MEM] {request.url.path} -> RSS after cleanup: {rss:.2f} GB")
+    return response
 
 # ---------------------------------------------------------------------------
 # Routers

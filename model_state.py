@@ -30,6 +30,12 @@ from database.db_init import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+import psutil, os
+_process = psutil.Process(os.getpid())
+def _log_mem(label):
+    rss = _process.memory_info().rss / 1e9
+    logger.info(f"[MEM] after {label}: {rss:.2f} GB")
+_log_mem("start")
 
 @dataclass
 class VectorDB:
@@ -38,9 +44,11 @@ class VectorDB:
 
 logger.info("Loading jinaclipv2 model...")
 DEVICE, JINACLIPV2_MODEL = load_model(model_name='jina-clip-v2')
+_log_mem("jinaclipv2 model loaded")
 
 logger.info("Loading dangvantuan model...")
 _DANGVANTUAN_DEVICE, DANGVANTUAN_MODEL = load_model(model_name='dangvantuan')
+_log_mem("dangvantuan model loaded")
 
 if _DANGVANTUAN_DEVICE != DEVICE:
     logger.warning(
@@ -51,29 +59,37 @@ if _DANGVANTUAN_DEVICE != DEVICE:
 
 logger.info("Loading jinaclipv2 encoded frames...")
 JINACLIPV2_ENCODED_FRAMES = load_jinaclipv2_encoded_frames(DEVICE, database_name='jinaclipv2_encoded_frames')
+_log_mem("encoded_frames loaded")
 
 logger.info("Loading keywords resources...")
 KEYWORDS_RESOURCES = load_keywords_resources(database_name='bm25_flatip_dangvantuan')
+_log_mem("keywords_resources loaded")
 
 logger.info("Loading bm25 database...")
 BM25, BM25_CHUNKS = load_bm25_database(database_name='bm25_flatip_dangvantuan')
+_log_mem("bm25 loaded")
 
 logger.info("Loading all event transcripts...")
 EVENT_TRANSCRIPTS = load_event_transcripts(database_name='all_event_transcripts')
+_log_mem("event_transcripts loaded")
 
 logger.info("Loading hnsw_jinaclipv2 index...")
 _hnsw_index, _hnsw_info_dict = faiss_database_processing("hnsw_jinaclipv2")
 HNSW_JINACLIPV2 = VectorDB(index=_hnsw_index, info_dict=_hnsw_info_dict)
+_log_mem("hnsw index loaded")
 
 logger.info("Loading flatip_dangvantuan index...")
 _flatip_index, _flatip_info_dict = faiss_database_processing("flatip_dangvantuan")
 FLATIP_DANGVANTUAN = VectorDB(index=_flatip_index, info_dict=_flatip_info_dict)
+_log_mem("flatip index loaded")
 
 logger.info("Loading bm25_flatip_dangvantuan index...")
 _bm25_flatip_index, _bm25_flatip_info_dict = load_bm25_flatip_dangvantuan(database_name='bm25_flatip_dangvantuan')
 BM25_FLATIP_DANGVANTUAN = VectorDB(index=_bm25_flatip_index, info_dict=_bm25_flatip_info_dict)
+_log_mem("bm25_flatip index loaded")
 
 logger.info("All model state loaded successfully.")
+_log_mem("all state loaded")
 
 # ---------------------------------------------------------------------------
 # ALL_FRAMES / FRAME_PATH — derived from HNSW_JINACLIPV2.info_dict (dict of events)
