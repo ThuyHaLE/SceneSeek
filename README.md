@@ -20,33 +20,39 @@
 - 📝 **Event Browser** — duyệt theo video_ID + khoảng event_id (local theo từng video), dùng để xác nhận nhanh cặp transcript–chuỗi frame trả về từ Type 3.
 
 ## 🏗️ Architecture Overview
+![SceneSeek Architecture](diagram/SceneSeek_diagram.png)
 
-```
-                     ┌─────────────────────────────┐
-                     │        Frontend (React)      │
+<details>
+<summary>Text version</summary>
+
+<pre>
+                     ┌───────────────────────────────┐
+                     │        Frontend (React)       │
                      │  SearchContext / GalleryItem  │
-                     └───────────────┬──────────────┘
+                     └───────────────┬───────────────┘
                                      │ REST (fallback mock nếu 501/network error)
-                     ┌───────────────▼──────────────┐
-                     │      FastAPI routers          │
+                     ┌───────────────▼────────────────┐
+                     │      FastAPI routers           │
                      │  search_router / data_router   │
                      │        / event_router          │
-                     └───────────────┬──────────────┘
+                     └───────────────┬────────────────┘
                                      │
         ┌────────────────────────────┼────────────────────────────┐
         ▼                            ▼                            ▼
  [Type 1: Frame]            [Type 2: Event Boundary]      [Type 3: Event Mention]
  Jina CLIP v2 (text)        Jina CLIP v2 (N queries)       dangvantuan (text-text)
  → HNSW index                → HNSW batch search           → FlatIP index
- → sort/group results         → cluster_by_video()          → optional hybrid: + BM25
-                               (best_ordered_chain DP)          → RRF merge
+ → sort/group results        → cluster_by_video()          → optional hybrid: + BM25
+                            (best_ordered_chain DP)        → RRF merge
 
         ┌─────────────────────────────────────────────────────────┐
         ▼                                                         ▼
  [Similar Frame]                                          [Browse & Verify]
  encoded_frames (preloaded)                          /api/data (by timestamp)
  → cosine similarity (torch.topk)                    /api/events (by event_id)
-```
+</pre>
+
+</details>
 
 Chi tiết thuật toán, schema, và các quyết định thiết kế xem tại [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
