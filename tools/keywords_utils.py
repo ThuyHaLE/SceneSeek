@@ -10,10 +10,10 @@ from pyvi import ViTokenizer, ViPosTagger
 FALLBACK_POS_TAGS = {"N", "Np", "Ny", "A"}
 GEN_MODEL_LABEL = "rule_based_v1"
 
-import logging
 import model_state
 
-logging.basicConfig(level=logging.INFO)
+import logging
+logging.basicConfig()
 logger = logging.getLogger(__name__)
 
 def _normalize_query(query: str) -> str:

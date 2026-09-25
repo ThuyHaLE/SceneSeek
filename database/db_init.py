@@ -7,9 +7,7 @@ import sqlite3
 import faiss
 import multiprocessing
 
-# Configure logging to output to the notebook
 import logging
-
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

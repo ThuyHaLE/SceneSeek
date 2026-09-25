@@ -1,10 +1,10 @@
 # tools/query_encoding.py
 
 import torch
-import logging
 import model_state
 
-logging.basicConfig(level=logging.INFO)
+import logging
+logging.basicConfig()
 logger = logging.getLogger(__name__)
 
 # Models this module knows how to encode with. Kept local (not sourced from

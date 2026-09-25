@@ -5,9 +5,7 @@ import torch
 from transformers import AutoModel
 from sentence_transformers import SentenceTransformer
 
-# Configure logging to output to the notebook
 import logging
-
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

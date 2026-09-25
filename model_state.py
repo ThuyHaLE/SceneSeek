@@ -12,7 +12,6 @@ Router gets these objects via Depends() in deps.py, e.g.:
     def route(model = Depends(get_model)): ...
 """
 
-import logging
 from dataclasses import dataclass
 from typing import Any, Dict
 import state
@@ -27,8 +26,10 @@ from database.db_init import (
     load_bm25_database
 )
 
-logging.basicConfig(level=logging.INFO)
+import logging
+logging.basicConfig()
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 import psutil, os
 _process = psutil.Process(os.getpid())
