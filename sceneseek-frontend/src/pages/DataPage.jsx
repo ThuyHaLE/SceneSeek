@@ -1,6 +1,6 @@
 // sceneseek-frontend/src/pages/DataPage.jsx
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { fetchKeyframes } from "../api/client";
 import GalleryItem from "../components/results/GalleryItem";
 import Pagination from "../components/results/Pagination";
@@ -33,6 +33,22 @@ function parseTimestamp(ts) {
 }
 
 const TIMESTAMP_RE = /^\d+:[0-5]\d(:[0-5]\d(\.\d+)?)?$/;
+
+// Debounce for the "fetch end-of-video timestamp" request. VideoIDSelector
+// emits a new videoId on every keystroke in the V field (1 -> V001, 12 -> V012, ...),
+// so without this we'd fire requests per keystroke.
+const END_FALLBACK_DEBOUNCE_MS = 300;
+
+const DEFAULT_END_FALLBACK = "00:00:00";
+
+// Timestamp of the latest frame in a list of keyframes.
+function lastTimestampOf(keyframes) {
+  if (!keyframes || keyframes.length === 0) return DEFAULT_END_FALLBACK;
+  const last = keyframes.reduce((max, r) =>
+    (r.timestamp_sec ?? 0) > (max.timestamp_sec ?? 0) ? r : max
+  );
+  return last.timestamp ?? DEFAULT_END_FALLBACK;
+}
 
 function validateTimestamp(ts) {
   if (!ts || !ts.trim()) return true;
@@ -90,22 +106,35 @@ function TimestampInput({ id, label, value, onChange, placeholder = "hh:mm:ss", 
 // ---------------------------------------------------------------------------
 
 export default function DataPage() {
+  // --- Form state (what the user is currently typing/selecting) ---
   const [videoId,     setVideoId]     = useState("");
   const [tsStart,     setTsStart]     = useState("");
   const [tsEnd,       setTsEnd]       = useState("");
   const [filterError, setFilterError] = useState(null);
 
+  // --- Applied filters (what the current results were actually fetched with) ---
+  // null = user hasn't pressed Apply yet -> show a hint instead of "no results".
+  // Pagination reads from here (NOT from the form state) so that editing the
+  // form without pressing Apply doesn't silently change what page 2, 3... return.
+  const [appliedFilters, setAppliedFilters] = useState(null);
+
+  // --- Results ---
   const [page,       setPage]       = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [keyframes,  setKeyframes]  = useState([]);
   const [loading,    setLoading]    = useState(false);
-  const [loadError,  setLoadError]  = useState(null); 
+  const [loadError,  setLoadError]  = useState(null);
+
+  // Monotonic id of the latest results request. A response is only applied if
+  // its id still matches, so slow/out-of-order responses can't overwrite newer
+  // ones (and Clear can invalidate anything still in flight).
+  const requestIdRef = useRef(0);
 
   // Bump to force VideoIDSelector remount (reset its internal lPart/vPart) when clearing filter —
   // because that component only reads videoId prop on mount, doesn't auto-sync when prop changes.
   const [selectorResetKey, setSelectorResetKey] = useState(0);
 
-  // List of "L" for dropdown — fetch dynamically from backend (based on real video_IDs in JSON), 
+  // List of "L" for dropdown — fetch dynamically from backend (based on real video_IDs in JSON),
   // fallback to FALLBACK_L_OPTIONS if fetch fails.
   const [lOptions, setLOptions] = useState(FALLBACK_L_OPTIONS);
 
@@ -133,14 +162,49 @@ export default function DataPage() {
     return () => { cancelled = true; };
   }, []);
 
-  // Duration fallback for end timestamp: get timestamp of last frame in current video
-  const endFallback = useMemo(() => {
-    if (keyframes.length === 0) return "00:00:00";
-    const last = keyframes.reduce((max, r) =>
-      (r.timestamp_sec ?? 0) > (max.timestamp_sec ?? 0) ? r : max
-    );
-    return last.timestamp ?? "00:00:00";
-  }, [keyframes]);
+  // Fallback for the end timestamp (start point of the ▲▼ buttons when the field
+  // is empty): timestamp of the LAST frame of the selected video.
+  //
+  // It used to be derived from the currently displayed `keyframes`, which is only
+  // one page (50 items) of results — so it was only right on the last page, and
+  // stale/wrong before Apply or when browsing other videos. Now it's fetched
+  // independently of the results list, from the last page of the selected video.
+  const [endFallback, setEndFallback] = useState(DEFAULT_END_FALLBACK);
+
+  // Reset to default immediately on every videoId change so we never shift from
+  // the previous video's end time while the new request is in flight. `cancelled`
+  // + the debounce timer drop stale/superseded requests. Results list is untouched.
+  useEffect(() => {
+    setEndFallback(DEFAULT_END_FALLBACK);
+    if (!isExactVideo) return;
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const base = {
+          perPage: 50,
+          videoId: videoId.trim(),
+          timestamp: "",
+          timestamp_end: "",
+        };
+        const first = await fetchKeyframes({ ...base, page: 1 });
+        let list = first.keyframes;
+        // Short video: page 1 is already everything. Otherwise jump to the last page.
+        if ((first.totalPages ?? 1) > 1) {
+          const last = await fetchKeyframes({ ...base, page: first.totalPages });
+          list = last.keyframes;
+        }
+        if (!cancelled) setEndFallback(lastTimestampOf(list));
+      } catch {
+        if (!cancelled) setEndFallback(DEFAULT_END_FALLBACK);
+      }
+    }, END_FALLBACK_DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [videoId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // -------------------------------------------------------------------------
   // Validation
@@ -166,13 +230,10 @@ export default function DataPage() {
   // Data loading
   // -------------------------------------------------------------------------
 
-  const load = useCallback(async (targetPage = 1, overrides = {}) => {
-    const filters = {
-      videoId: videoId,
-      tsStart: tsStart,
-      tsEnd: tsEnd,
-      ...overrides,
-    };
+  // `filters` is passed explicitly (never read from form state) so results
+  // always correspond to what was applied, and there's no stale-closure issue.
+  async function load(targetPage, filters) {
+    const reqId = ++requestIdRef.current;
     setLoading(true);
     setLoadError(null);
     try {
@@ -183,15 +244,17 @@ export default function DataPage() {
         timestamp: filters.tsStart.trim(),
         timestamp_end: filters.tsEnd.trim(),
       });
+      if (reqId !== requestIdRef.current) return; // superseded by a newer request / Clear
       setKeyframes(res.keyframes);
       setTotalPages(res.totalPages);
       setPage(res.page ?? targetPage);
     } catch (e) {
+      if (reqId !== requestIdRef.current) return;
       setLoadError("Không thể tải dữ liệu. Vui lòng thử lại.");
     } finally {
-      setLoading(false);
+      if (reqId === requestIdRef.current) setLoading(false);
     }
-  }, [videoId, tsStart, tsEnd]);
+  }
 
   // -------------------------------------------------------------------------
   // Handlers
@@ -202,21 +265,39 @@ export default function DataPage() {
     const err = validate();
     if (err) { setFilterError(err); return; }
     setFilterError(null);
-    load(1);
+
+    const filters = { videoId, tsStart, tsEnd };
+    setAppliedFilters(filters);
+    load(1, filters);
   }
 
+  function handlePageChange(targetPage) {
+    if (!appliedFilters) return;
+    load(targetPage, appliedFilters);
+  }
+
+  // Clear returns the page to its initial empty state (no fetch).
   function handleClear() {
+    requestIdRef.current++; // invalidate any in-flight results request
     setVideoId("");
     setTsStart("");
     setTsEnd("");
     setFilterError(null);
     setSelectorResetKey((k) => k + 1); // force VideoIDSelector remount → delete selected lPart/vPart
-    load(1, { videoId: "", tsStart: "", tsEnd: "" }); // reload immediately with cleared filter
+
+    setAppliedFilters(null);
+    setKeyframes([]);
+    setPage(1);
+    setTotalPages(1);
+    setLoadError(null);
+    setLoading(false);
   }
 
   // -------------------------------------------------------------------------
   // Render
   // -------------------------------------------------------------------------
+
+  const hasApplied = appliedFilters !== null;
 
   return (
     <div className="ss-data-page">
@@ -257,7 +338,7 @@ export default function DataPage() {
         </p>
 
         {filterError && <p className="ss-form-error">{filterError}</p>}
-        {loadError && <p className="ss-form-error">{loadError}</p>} 
+        {loadError && <p className="ss-form-error">{loadError}</p>}
 
         <div className="ss-form-actions">
           <button type="submit" className="ss-btn ss-btn--primary" disabled={loading}>
@@ -269,7 +350,9 @@ export default function DataPage() {
         </div>
       </form>
 
-      {loading ? (
+      {!hasApplied ? (
+        <p className="ss-results-status">Chọn bộ lọc rồi bấm "Apply Filter" để xem frame.</p>
+      ) : loading ? (
         <SkeletonGrid count={50} />
       ) : keyframes.length === 0 ? (
         <p className="ss-results-status">Không tìm thấy frame nào phù hợp.</p>
@@ -288,7 +371,7 @@ export default function DataPage() {
         </div>
       )}
 
-      <Pagination page={page} totalPages={totalPages} onChange={load} />
+      {hasApplied && <Pagination page={page} totalPages={totalPages} onChange={handlePageChange} />}
     </div>
   );
 }

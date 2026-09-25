@@ -1,6 +1,6 @@
 // sceneseek-frontend/src/pages/EventPage.jsx
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { fetchEvents } from "../api/client";
 import VideoGroupItem from "../components/results/VideoGroupItem";
 import Pagination from "../components/results/Pagination";
@@ -20,6 +20,11 @@ const FALLBACK_L_OPTIONS = Array.from({ length: 24 }, (_, i) =>
 // Exact "L13_V001" format — event_id is local per video, so range filtering
 // only makes sense when exactly one video is selected (not an "L13" prefix).
 const EXACT_VIDEO_ID_RE = /^L\d+_V\d+$/;
+
+// Debounce for the "fetch max event_id" request. VideoIDSelector emits a new
+// videoId on every keystroke in the V field (1 -> V001, 12 -> V012, ...), so
+// without this we'd fire one request per keystroke.
+const BOUNDS_DEBOUNCE_MS = 300;
 
 // ---------------------------------------------------------------------------
 // EventIdInput — integer input with ▲▼ shift buttons, mirrors TimestampInput's
@@ -180,16 +185,29 @@ function VideoIDSelector({ videoId, onChange, lOptions }) {
 // ---------------------------------------------------------------------------
 
 export default function EventPage() {
+  // --- Form state (what the user is currently typing/selecting) ---
   const [videoId, setVideoId] = useState("");
   const [eventIdStart, setEventIdStart] = useState("");
   const [eventIdEnd, setEventIdEnd] = useState("");
   const [filterError, setFilterError] = useState(null);
 
+  // --- Applied filters (what the current results were actually fetched with) ---
+  // null = user hasn't pressed Apply yet -> show nothing, don't fetch anything.
+  // Pagination reads from here (NOT from the form state) so that editing the
+  // form without pressing Apply doesn't silently change what page 2, 3... return.
+  const [appliedFilters, setAppliedFilters] = useState(null);
+
+  // --- Results ---
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
+
+  // Monotonic id of the latest results request. A response is only applied if
+  // its id still matches, so slow/out-of-order responses can't overwrite newer
+  // ones (and Clear can invalidate anything still in flight).
+  const requestIdRef = useRef(0);
 
   // Bump to force VideoIDSelector remount (reset internal lPart/vPart) on clear —
   // same workaround as DataPage, see its comment for why.
@@ -202,24 +220,59 @@ export default function EventPage() {
   // Real max event_id for the currently selected video, sourced from the
   // backend response (`maxEventId`), NOT derived from the loaded `events`
   // page — events is paginated (perPage=20) so its local max is unreliable.
-  // Starts at 0 and is only meaningful once boundsReady is true.
+  // Reset to 0 whenever videoId changes, then refilled by the bounds effect
+  // below. Only meaningful once boundsReady is true.
   const [eventIdEndFallback, setEventIdEndFallback] = useState(0);
 
-  // True once we've actually fetched maxEventId for the video currently
-  // selected. Used to avoid clamping against a stale/zero boundary while
-  // the request for a newly-selected video is still in flight.
   const boundsReady = isExactVideo && eventIdEndFallback > 0;
 
-  const startMax = boundsReady ? Math.max(0, eventIdEndFallback - 1) : undefined;
-  const endMin = boundsReady ? 1 : undefined;
+  // Start and End share the same upper bound (start == end is a valid
+  // single-event range; start <= end is checked separately in validate()).
+  // End's lower bound is -1 because -1 means "last event" (see validate()).
+  const startMax = boundsReady ? eventIdEndFallback : undefined;
+  const endMin = boundsReady ? -1 : undefined;
   const endMax = boundsReady ? eventIdEndFallback : undefined;
 
+  // Selecting anything other than one exact video clears the event range.
   useEffect(() => {
     if (!isExactVideo && (eventIdStart || eventIdEnd)) {
       setEventIdStart("");
       setEventIdEnd("");
     }
   }, [isExactVideo]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch max event_id for the selected video — WITHOUT touching the results
+  // list, so simply picking a video doesn't display any data. Only the
+  // boundary is fetched (perPage: 1 keeps the payload tiny).
+  //
+  // Reset to 0 immediately on every videoId change so we never clamp against
+  // the previous video's max while the new request is in flight. `cancelled`
+  // + the debounce timer drop stale/superseded requests.
+  useEffect(() => {
+    setEventIdEndFallback(0);
+    if (!isExactVideo) return;
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetchEvents({
+          page: 1,
+          perPage: 1,
+          videoId: videoId.trim(),
+          eventIdStart: "",
+          eventIdEnd: "",
+        });
+        if (!cancelled) setEventIdEndFallback(res.maxEventId ?? 0);
+      } catch {
+        if (!cancelled) setEventIdEndFallback(0);
+      }
+    }, BOUNDS_DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [videoId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let cancelled = false;
@@ -235,6 +288,9 @@ export default function EventPage() {
       });
     return () => { cancelled = true; };
   }, []);
+
+  // NOTE: no "load on mount" effect any more — the page starts empty and only
+  // fetches results when the user presses Apply Filter.
 
   // -------------------------------------------------------------------------
   // Validation
@@ -278,13 +334,10 @@ export default function EventPage() {
   // Data loading
   // -------------------------------------------------------------------------
 
-  const load = useCallback(async (targetPage = 1, overrides = {}) => {
-    const filters = {
-      videoId,
-      eventIdStart,
-      eventIdEnd,
-      ...overrides,
-    };
+  // `filters` is passed explicitly (never read from form state) so results
+  // always correspond to what was applied, and there's no stale-closure issue.
+  async function load(targetPage, filters) {
+    const reqId = ++requestIdRef.current;
     setLoading(true);
     setLoadError(null);
     try {
@@ -295,25 +348,18 @@ export default function EventPage() {
         eventIdStart: filters.eventIdStart.trim(),
         eventIdEnd: filters.eventIdEnd.trim(),
       });
+      if (reqId !== requestIdRef.current) return; // superseded by a newer request / Clear
       setEvents(res.events);
       setTotalPages(res.totalPages);
       setPage(res.page ?? targetPage);
-      setEventIdEndFallback(res.maxEventId ?? 0);
     } catch (e) {
+      if (reqId !== requestIdRef.current) return;
       setLoadError("Không thể tải dữ liệu. Vui lòng thử lại.");
-      setEventIdEndFallback(0);   // <-- CHỈ THÊM DÒNG NÀY vào catch đã có sẵn
     } finally {
-      setLoading(false);
+      if (reqId === requestIdRef.current) setLoading(false);
     }
-  }, [videoId, eventIdStart, eventIdEnd]);
+  }
 
-  // Load once on mount.
-  useEffect(() => { load(1); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (isExactVideo) load(1);
-  }, [isExactVideo, videoId]); // eslint-disable-line react-hooks/exhaustive-deps
-  
   // -------------------------------------------------------------------------
   // Handlers
   // -------------------------------------------------------------------------
@@ -323,17 +369,33 @@ export default function EventPage() {
     const err = validate();
     if (err) { setFilterError(err); return; }
     setFilterError(null);
-    load(1);
+
+    const filters = { videoId, eventIdStart, eventIdEnd };
+    setAppliedFilters(filters);
+    load(1, filters);
   }
 
+  function handlePageChange(targetPage) {
+    if (!appliedFilters) return;
+    load(targetPage, appliedFilters);
+  }
+
+  // Clear returns the page to its initial empty state (no fetch).
   function handleClear() {
+    requestIdRef.current++; // invalidate any in-flight results request
     setVideoId("");
     setEventIdStart("");
     setEventIdEnd("");
     setFilterError(null);
     setSelectorResetKey((k) => k + 1);
     setEventIdEndFallback(0);
-    load(1, { videoId: "", eventIdStart: "", eventIdEnd: "" });
+
+    setAppliedFilters(null);
+    setEvents([]);
+    setPage(1);
+    setTotalPages(1);
+    setLoadError(null);
+    setLoading(false);
   }
 
   // -------------------------------------------------------------------------
@@ -341,6 +403,7 @@ export default function EventPage() {
   // -------------------------------------------------------------------------
 
   const groups = groupClustersByVideo(events);
+  const hasApplied = appliedFilters !== null;
 
   return (
     <div className="ss-data-page">
@@ -367,7 +430,7 @@ export default function EventPage() {
             value={eventIdEnd}
             onChange={setEventIdEnd}
             fallback={eventIdEndFallback}
-            placeholder={`${eventIdEndFallback} (event cuối cùng)`}
+            placeholder={boundsReady ? `${eventIdEndFallback} (event cuối cùng)` : "event cuối cùng"}
             disabled={!isExactVideo}
             min={endMin}
             max={endMax}
@@ -376,7 +439,9 @@ export default function EventPage() {
 
         <p className="ss-form-hint">
           {isExactVideo
-            ? `Để trống → 0 (đầu) và ${eventIdEndFallback} (cuối).`
+            ? boundsReady
+              ? `Để trống → 0 (đầu) và ${eventIdEndFallback} (cuối). Nhập -1 ở ô kết thúc = event cuối.`
+              : "Để trống → từ event đầu tiên đến event cuối cùng."
             : "Chọn đúng 1 Video ID (VD: L21_V001) để lọc theo Event ID."}
         </p>
 
@@ -393,7 +458,9 @@ export default function EventPage() {
         </div>
       </form>
 
-      {loading ? (
+      {!hasApplied ? (
+        <p className="ss-results-status">Chọn bộ lọc rồi bấm "Apply Filter" để xem sự kiện.</p>
+      ) : loading ? (
         <SkeletonGrid count={50} />
       ) : events.length === 0 ? (
         <p className="ss-results-status">Không tìm thấy sự kiện nào phù hợp.</p>
@@ -414,7 +481,7 @@ export default function EventPage() {
         </div>
       )}
 
-      <Pagination page={page} totalPages={totalPages} onChange={load} />
+      {hasApplied && <Pagination page={page} totalPages={totalPages} onChange={handlePageChange} />}
     </div>
   );
 }
