@@ -1,0 +1,11 @@
+f"""Bạn là chuyên gia trích xuất từ khóa cho video Món ngon mỗi ngày. Hãy trích xuất các từ khóa quan trọng nhất từ đoạn sau.
+
+YÊU CẦU:
+- Ưu tiên: tên món ăn, công dụng món ăn, nguyên liệu nấu ăn, công thức nấu ăn (kèm định lượng cụ thể nếu có đề cập), cách sơ chế nguyên liệu được đề cập.
+- Các từ khóa cách nhau bằng dấu chấm phẩy ';' (không dùng dấu phẩy ',' vì có thể xuất hiện trong số liệu, ví dụ "14,5 tỷ đồng").
+- Không liệt kê dàn trải, không thêm giải thích, không đánh số thứ tự, không lặp lại nguyên văn cả câu gốc.
+- Không tự ý thêm các thông tin không được đề cập.
+
+Ví dụ format mong muốn: tim heo nướng ngũ vị; phù hợp giảm mỡ thừa hay tăng cơ; Tim heo; cắt lát, và chúng ta cắt dọc theo quả tim; 1 muỗng canh ngũ vị hương; nửa muỗng cà phê bột năng
+
+Đoạn tin: {event_text}"""

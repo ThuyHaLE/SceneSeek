@@ -1,0 +1,57 @@
+{
+  "benchmark_version": "0.1",
+  "kaggle_url_template": "https://www.kaggle.com/datasets/{slug}",
+  "stages": {
+    "00_raw_videos": {
+      "description": "Video gốc từ ban tổ chức, không chỉnh sửa",
+      "format": "zip",
+      "per_group": {
+        "L01": {"slug": "halett/videos-l01-zip", "version": 1, "num_files": 31, "topic":"Tin tức thời sự"},
+        "L02": {"slug": "halett/videos-l02-zip", "version": 1, "num_files": 31, "topic":"Tin tức thời sự"},
+        "L03": {"slug": "halett/videos-l03-zip", "version": 1, "num_files": 30, "topic":"Tin tức thời sự"},
+        "L04": {"slug": "halett/videos-l04-zip", "version": 1, "num_files": 30, "topic":"Tin tức thời sự"},
+        "L05": {"slug": "halett/videos-l05-zip", "version": 1, "num_files": 31, "topic":"Tin tức thời sự"},
+        "L06": {"slug": "halett/videos-l06-zip", "version": 1, "num_files": 31, "topic":"Tin tức thời sự"},
+        "L07": {"slug": "halett/videos-l07-zip", "version": 1, "num_files": 31, "topic":"Tin tức thời sự"},
+        "L08": {"slug": "halett/videos-l08-zip", "version": 1, "num_files": 30, "topic":"Tin tức thời sự"},
+        "L09": {"slug": "halett/videos-l09-zip", "version": 1, "num_files": 29, "topic":"Tin tức thời sự"},
+        "L10": {"slug": "halett/videos-l10-zip", "version": 1, "num_files": 29, "topic":"Tin tức thời sự"},
+        "L11": {"slug": "halett/videos-l11-zip", "version": 1, "num_files": 30, "topic":"Tin tức thời sự"},
+        "L12": {"slug": "halett/videos-l12-zip", "version": 1, "num_files": 30, "topic":"Tin tức thời sự"},
+        "L13": {"slug": "halett/videos-l13-zip", "version": 1, "num_files": 30, "topic":"Tin tức thời sự"},
+        "L14": {"slug": "halett/videos-l14-zip", "version": 1, "num_files": 27, "topic":"Tin tức thời sự"},
+        "L15": {"slug": "halett/videos-l15-zip", "version": 1, "num_files": 31, "topic":"Tin tức thời sự"},
+        "L16": {"slug": "halett/videos-l16-zip", "version": 1, "num_files": 30, "topic":"Tin tức thời sự"},
+        "L17": {"slug": "halett/videos-l17-zip", "version": 1, "num_files": 28, "topic":"Tin tức thời sự"},
+        "L18": {"slug": "halett/videos-l18-zip", "version": 1, "num_files": 29, "topic":"Tin tức thời sự"},
+        "L19": {"slug": "halett/videos-l19-zip", "version": 1, "num_files": 30, "topic":"Tin tức thời sự"},
+        "L20": {"slug": "halett/videos-l20-zip", "version": 1, "num_files": 29, "topic":"Tin tức thời sự"},
+        "L21-a": {"slug": "thuyhalt/videos-l21-a", "version": 1, "num_files": 29, "topic":"Tin tức thời sự"},
+        "L22-a": {"slug": "thuyhalt/videos-l22-a", "version": 1, "num_files": 31, "topic":"Tin tức thời sự"},
+        "L23-a": {"slug": "thuyhalt/videos-l23-a", "version": 1, "num_files": 25, "topic":"Cuộc đua xe đạp"},
+        "L24-a": {"slug": "thuyhalt/videos-l24-a", "version": 1, "num_files": 43, "topic":"Cuộc thi múa lân"},
+        "L25-a": {"slug": "thuyhalt/videos-l25-a", "version": 1, "num_files": 55, "topic":"Ôn thi tốt nghiệp Trung học phổ thông online"},
+        "L26-a": {"slug": "thuyhalt/videos-l26-a", "version": 1, "num_files": 99, "topic":"Món ngon mỗi ngày"},
+        "L26-b": {"slug": "thuyhalt/videos-l26-b", "version": 1, "num_files": 100, "topic":"Món ngon mỗi ngày"},
+        "L26-c": {"slug": "thuyhalt/videos-l26-c", "version": 1, "num_files": 100, "topic":"Món ngon mỗi ngày"},
+        "L26-d": {"slug": "thuyhalt/videos-l26-d", "version": 1, "num_files": 100, "topic":"Món ngon mỗi ngày"},
+        "L26-e": {"slug": "thuyhalt/videos-l26-e", "version": 1, "num_files": 99, "topic":"Món ngon mỗi ngày"},
+        "L27-a": {"slug": "thuyhalt/videos-l27-a", "version": 1, "num_files": 16, "topic":"Việt Nam đi là ghiền"},
+        "L28-a": {"slug": "thuyhalt/videos-l28-a", "version": 1, "num_files": 24, "topic":"Từ Mê Kông đến Cửu Long"},
+        "L29-a": {"slug": "thuyhalt/videos-l29-a", "version": 1, "num_files": 23, "topic":"Xuôi dòng Mê Kông"},
+        "L30-a": {"slug": "thuyhalt/videos-l30-a", "version": 1, "num_files": 96, "topic":"Những điều nhỏ bé"}
+      }
+    },
+    "01_whisper": {
+      "slug": "halett/<tên-dataset-output>",
+      "kaggle_version": 1,
+      "path_pattern": "**/*.json",
+      "n_files": 1000
+    },
+    "02_grouped": {
+      "slug": "halett/<tên-dataset-output>",
+      "kaggle_version": 1,
+      "prompts": "prompts/02_group_events_{topic}.txt"
+    }
+  }
+}
