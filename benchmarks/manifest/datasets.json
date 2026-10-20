@@ -4,7 +4,7 @@
   "stages": {
     "00_raw_videos": {
       "description": "Video gốc từ ban tổ chức, không chỉnh sửa",
-      "format": "zip",
+      "format": "mp4",
       "per_group": {
         "L01": {"slug": "halett/videos-l01-zip", "version": 1, "num_files": 31, "topic":"Tin tức thời sự"},
         "L02": {"slug": "halett/videos-l02-zip", "version": 1, "num_files": 31, "topic":"Tin tức thời sự"},
@@ -42,16 +42,56 @@
         "L30-a": {"slug": "thuyhalt/videos-l30-a", "version": 1, "num_files": 96, "topic":"Những điều nhỏ bé"}
       }
     },
-    "01_whisper": {
-      "slug": "halett/<tên-dataset-output>",
-      "kaggle_version": 1,
-      "path_pattern": "**/*.json",
-      "n_files": 1000
+    "00_map_keyframes": {
+      "description": "Metadata gốc từ ban tổ chức, không chỉnh sửa",
+      "format": "csv",
+      "per_group": {
+        "map-keyframes-aic23-b1": {
+          "slug": "halett/map-keyframes", 
+          "version": 1, 
+          "num_files": 363, 
+          "groups":[
+            "L01", "L02", "L03", "L04", "L05", "L06", "L07", "L08", "L09", "L10", "L11", "L12"
+          ]},
+        "map-keyframes-aic23-b2": {
+          "slug": "halett/map-keyframes", 
+          "version": 1, 
+          "num_files": 363, 
+          "groups":[
+            "L13", "L14", "L15", "L16", "L17", "L18", "L19", "L20"
+          ]},
+        "map-keyframes-aic25-b1": {
+          "slug": "halett/map-keyframes", 
+          "version": 1, 
+          "num_files": 873, 
+          "groups":[
+            "L21-a", "L22-a", "L23-a", "L24-a", "L25-a", 
+            "L26-a", "L26-b", "L26-c", "L26-d", "L26-e", 
+            "L27-a", "L28-a", "L29-a", "L30-a"
+          ]}
+      }
     },
+    "00_map-video-topic": {
+      "description": "Phân loại chủ đề video",
+      "format": "csv",
+      "slug": "thuyhalt/map-video-topic", 
+      "version": 1, 
+      "num_files": 1 
+      }
+    },
+    "01_whisper": {
+      "slug": "halett/collected-video-transcripts",
+      "kaggle_version": 4,
+      "model": "openai/whisper-large-v3",
+      "path_pattern": "**/transcripts/*.json",
+      "n_files": 1506
+    },
+    
     "02_grouped": {
-      "slug": "halett/<tên-dataset-output>",
+      "slug": "halett/collected-event-transcripts",
       "kaggle_version": 1,
-      "prompts": "prompts/02_group_events_{topic}.txt"
+      "llm": "google/gemini-3.6-flash",
+      "path_pattern": "**/transcripts/*.json",
+      "n_files": 1438
     }
   }
-}

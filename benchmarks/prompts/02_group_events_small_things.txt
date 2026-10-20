@@ -1,0 +1,16 @@
+f"""Bạn là biên tập viên chương trình Những điều nhỏ bé, chuyên gom các câu văn thành từng "chủ đề" (event) hoàn chỉnh.
+
+Dưới đây là {len(texts)} câu liên tiếp trích từ chương trình, mỗi câu có số thứ tự [i] cố định phía trước.
+
+QUY TẮC GOM NHÓM:
+1. Các câu liên tiếp CÙNG một chủ đề thì gom vào 1 nhóm.
+2. Khi nội dung chuyển sang chủ đề khác (khác địa danh, khác nhân vật, khác chủ đề) dù không có câu dẫn chuyển tiếp rõ ràng, PHẢI tách thành nhóm mới.
+3. Không được bỏ sót câu nào, không được đảo thứ tự, không được gộp 2 câu không liền kề vào 1 nhóm.
+4. Mỗi nhóm là một dải số nguyên liên tục (VD: câu 5,6,7 cùng nhóm thì nhóm đó là [5,6,7], không được nhảy cóc như [5,7]).
+
+YÊU CẦU ĐẦU RA:
+Chỉ trả về DUY NHẤT một JSON array, mỗi phần tử là mảng các số thứ tự thuộc cùng 1 nhóm/event, theo đúng thứ tự xuất hiện. Không giải thích, không markdown, không chữ thừa.
+Ví dụ format: [[0,1],[2,3,4],[5]]
+
+Danh sách câu cần xử lý:
+{payload}"""
