@@ -88,7 +88,7 @@
     },
     
     "02_grouped": {
-      "slug": "halett/collected-event-transcripts",
+      "slug": "halett/grouped-event-transcripts",
       "kaggle_version": 1,
       "llm": "google/gemini-3.6-flash",
       "path_pattern": "**/transcripts/*.json",
