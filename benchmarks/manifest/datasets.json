@@ -28,8 +28,8 @@
         "L20": {"slug": "halett/videos-l20-zip", "version": 1, "num_files": 29, "topic":"Tin tức thời sự"},
         "L21-a": {"slug": "thuyhalt/videos-l21-a", "version": 1, "num_files": 29, "topic":"Tin tức thời sự"},
         "L22-a": {"slug": "thuyhalt/videos-l22-a", "version": 1, "num_files": 31, "topic":"Tin tức thời sự"},
-        "L23-a": {"slug": "thuyhalt/videos-l23-a", "version": 1, "num_files": 25, "topic":"Cuộc đua xe đạp"},
-        "L24-a": {"slug": "thuyhalt/videos-l24-a", "version": 1, "num_files": 43, "topic":"Cuộc thi múa lân"},
+        "L23-a": {"slug": "thuyhalt/videos-l23-a", "version": 1, "num_files": 25, "topic":"Giải đua xe đạp"},
+        "L24-a": {"slug": "thuyhalt/videos-l24-a", "version": 1, "num_files": 43, "topic":"Hội thi múa lân"},
         "L25-a": {"slug": "thuyhalt/videos-l25-a", "version": 1, "num_files": 55, "topic":"Ôn thi tốt nghiệp Trung học phổ thông online"},
         "L26-a": {"slug": "thuyhalt/videos-l26-a", "version": 1, "num_files": 99, "topic":"Món ngon mỗi ngày"},
         "L26-b": {"slug": "thuyhalt/videos-l26-b", "version": 1, "num_files": 100, "topic":"Món ngon mỗi ngày"},
@@ -86,12 +86,44 @@
       "path_pattern": "**/transcripts/*.json",
       "n_files": 1506
     },
-    
     "02_grouped": {
-      "slug": "halett/grouped-event-transcripts",
+      "slug": {
+        "raw": "halett/grouped-event-transcripts",
+        "revised": ""
+      },
       "kaggle_version": 1,
       "llm": "google/gemini-3.6-flash",
       "path_pattern": "**/transcripts/*.json",
       "n_files": 1438
+    },
+    "03_corrected": {
+      "slug": {
+        "raw": "",
+        "revised": ""
+      },
+      "kaggle_version": 1,
+      "llm": "google/gemini-3.6-flash",
+      "path_pattern": "**/transcripts/*.json",
+      "n_files": 0
+    },
+    "04_event_summarized": {
+      "slug": {
+        "raw": "",
+        "revised": ""
+      },
+      "kaggle_version": 1,
+      "llm": "google/gemini-3.6-flash",
+      "path_pattern": "**/transcripts/*.json",
+      "n_files": 0
+    },
+    "04_transcript_summarized": {
+      "slug": {
+        "raw": "",
+        "revised": ""
+      },
+      "kaggle_version": 1,
+      "llm": "google/gemini-3.6-flash",
+      "path_pattern": "**/transcripts/*.json",
+      "n_files": 0
     }
   }
