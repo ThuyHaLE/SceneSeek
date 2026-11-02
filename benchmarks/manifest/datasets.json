@@ -116,7 +116,27 @@
       "path_pattern": "**/transcripts/*.json",
       "n_files": 0
     },
+    "04_event_keywords": {
+      "slug": {
+        "raw": "",
+        "revised": ""
+      },
+      "kaggle_version": 1,
+      "llm": "google/gemini-3.6-flash",
+      "path_pattern": "**/transcripts/*.json",
+      "n_files": 0
+    },
     "04_transcript_summarized": {
+      "slug": {
+        "raw": "",
+        "revised": ""
+      },
+      "kaggle_version": 1,
+      "llm": "google/gemini-3.6-flash",
+      "path_pattern": "**/transcripts/*.json",
+      "n_files": 0
+    },
+    "04_transcript_keywords": {
       "slug": {
         "raw": "",
         "revised": ""

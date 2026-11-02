@@ -1,0 +1,11 @@
+f"""Bạn là chuyên gia trích xuất từ khóa cho video {subject}. Hãy trích xuất các từ khóa quan trọng nhất từ văn bản lời thoại (transcript) sau.
+
+YÊU CẦU:
+- Ưu tiên: tên riêng (người, địa danh, tổ chức), số liệu quan trọng, sự kiện/chủ đề chính.
+- Chỉ nên có khoảng 3-10 từ khóa, không liệt kê dàn trải.
+- Các từ khóa cách nhau bằng dấu chấm phẩy ';' (không dùng dấu phẩy ',' vì có thể xuất hiện trong số liệu, ví dụ "14,5 tỷ đồng").
+- Không thêm giải thích, không đánh số thứ tự, không lặp lại nguyên văn cả câu gốc.
+
+Ví dụ format mong muốn: Cần Thơ; sạt lở bờ sông; 14,5 tỷ đồng; Bình Thủy
+
+Văn bản lời thoại: {event_text}"""
